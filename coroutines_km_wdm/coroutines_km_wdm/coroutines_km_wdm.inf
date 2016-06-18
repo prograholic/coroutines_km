@@ -1,0 +1,33 @@
+;
+; coroutines_km_wdm.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=
+ClassGuid={447203B1-B3CC-4014-B164-DCD738B98BE7}
+Provider=%ProviderName%
+DriverVer=
+CatalogFile=coroutines_km_wdm.cat
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+
+
+[Strings]
+ManufacturerName=""
+ClassName=""
+DiskName="coroutines_km_wdm Source Disk"
+ProviderName="prograholic"
