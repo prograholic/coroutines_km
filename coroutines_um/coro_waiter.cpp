@@ -117,17 +117,19 @@ public:
 
     typedef DWORD value_type;
 
-    typedef coro::promise<value_type> promise_type;
+    typedef coro::promise<void> promise_type;
 
     AwaiterBase()
         : OVERLAPPED()
         , m_coroutineHandle()
+        , m_value(0)
     {
         CALL_SPY();
     }
 
 protected:
     std::experimental::coroutine_handle<promise_type> m_coroutineHandle;
+    value_type m_value;
 
     OVERLAPPED* GetOverlapped()
     {
@@ -139,11 +141,12 @@ protected:
         return reinterpret_cast<AwaiterBase*>(overlapped);
     }
 
-    static void WINAPI OnWrite(DWORD error, DWORD bytesReaded, LPOVERLAPPED overlapped)
+    static void WINAPI OnWrite(DWORD error, DWORD bytesWritten, LPOVERLAPPED overlapped)
     {
         AwaiterBase* me = GetAwaiterBase(overlapped);
 
-        me->m_coroutineHandle.promise().set_value(error);
+        me->m_coroutineHandle.promise().set_error(coro::detail::GetErrorCodeFromWindowsResult(error));
+        me->m_value = bytesWritten;
 
         me->m_coroutineHandle();
     }
@@ -167,12 +170,7 @@ struct WriteAwaiter : AwaiterBase
     {
         m_coroutineHandle = coroutineHandle;
 
-        auto err = m_coroutineHandle.promise().init();
-        if (err)
-        {
-            m_coroutineHandle.destroy();
-            return;
-        }
+
 
         auto success = ::WriteFileEx(m_handle, m_data.data(), m_data.size(), GetOverlapped(), OnWrite);
         if (!success)
@@ -185,6 +183,8 @@ struct WriteAwaiter : AwaiterBase
 
     value_type await_resume()
     {
+        CALL_SPY();
+        return m_value;
     }
 
 private:
@@ -213,21 +213,14 @@ WriteAwaiter WriteAsync()
 
 
 //std::future<void>
-my_future TryCoroWaiter2()
+coro::future<void>
+WriteAndTrace()
 {
     CALL_SPY();
-    try
-    {
-        CALL_SPY();
-        await WriteAsync();
-        CALL_SPY();
-    }
-    catch (const error_info_t& e)
-    {
-        TRACE() << e.first << ": " << e.second << std::endl;
-    }
-
-    CALL_SPY();
+    await WriteAsync();
+    
+    auto bytesWritten = await WriteAsync();
+    TRACE() << "WOW!!! we have result (bytes written): " << bytesWritten << std::endl;
 }
 
 } // namespace has_exceptions
@@ -240,10 +233,21 @@ void TryCoroWaiter()
     try
     {
         CALL_SPY();
-        auto&& res = TryCoroWaiter2();
+        auto&& res = WriteAndTrace();
         CALL_SPY();
 
-        res.GetValue();
+        auto err = res.get_value();
+
+        if (err)
+        {
+            TRACE() << "fail with error: " << err.message() << std::endl;
+        }
+        else
+        {
+            TRACE() << "finished" << std::endl;
+        }
+
+
         CALL_SPY();
     }
     catch (const error_info_t& e)
