@@ -9,106 +9,6 @@
 
 namespace has_exceptions
 {
-#if 0
-struct my_promise
-{
-    my_promise()
-        //: m_event()
-    {
-        CALL_SPY();
-
-        //EXPECT(m_event != nullptr);
-    }
-
-    my_promise(const my_promise& ) = delete;
-    my_promise& operator=(const my_promise& ) = delete;
-
-    ~my_promise()
-    {
-        CALL_SPY();
-    }
-
-public:
-    std::experimental::suspend_never initial_suspend()
-    {
-        CALL_SPY();
-        return {};
-    }
-
-    my_future get_return_object();
-
-    std::experimental::suspend_never final_suspend()
-    {
-        CALL_SPY();
-        return {};
-    }
-
-
-public:
-    void SetValue()
-    {
-        CALL_SPY();
-    }
-
-private:
-    //HANDLE m_event;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-struct my_future
-{
-    ~my_future()
-    {
-        CALL_SPY();
-    }
-
-    my_future(my_future&& other) = default;
-    my_future& operator=(my_future&& other) = default;
-
-    explicit my_future(HANDLE event)
-        : m_event(event)
-    {
-        CALL_SPY();
-        EXPECT(m_event != INVALID_HANDLE_VALUE);
-    }
-
-    my_future(const my_future& ) = delete;
-    my_future& operator=(const my_future& ) = delete;
-
-
-
-    typedef my_promise promise_type;
-
-    void GetValue()
-    {
-        CALL_SPY();
-        EXPECT(WaitForSingleObjectEx(m_event, INFINITE, true) == WAIT_IO_COMPLETION);
-        CALL_SPY();
-    }
-private:
-    HANDLE m_event;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-my_future my_promise::get_return_object()
-{
-    CALL_SPY();
-
-    auto event = ::CreateEvent(nullptr, true, true, nullptr);
-    EXPECT(event != nullptr);
-
-    return my_future{event};
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-#endif //0
-
 
 
 class AwaiterBase : private OVERLAPPED
@@ -148,7 +48,7 @@ protected:
         me->m_coroutineHandle.promise().set_error(coro::detail::GetErrorCodeFromWindowsResult(error));
         me->m_value = bytesWritten;
 
-        me->m_coroutineHandle();
+        me->m_coroutineHandle.resume();
     }
 };
 
@@ -170,7 +70,11 @@ struct WriteAwaiter : AwaiterBase
     {
         m_coroutineHandle = coroutineHandle;
 
-
+        if (!m_coroutineHandle.promise().valid())
+        {
+            m_coroutineHandle.destroy();
+            return;
+        }
 
         auto success = ::WriteFileEx(m_handle, m_data.data(), m_data.size(), GetOverlapped(), OnWrite);
         if (!success)

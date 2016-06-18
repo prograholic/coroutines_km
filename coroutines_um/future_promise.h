@@ -220,6 +220,17 @@ public:
 template <typename Type>
 using shared_state_ptr = std::shared_ptr<shared_state<Type>>;
 
+template <typename Type>
+bool IsValid(const shared_state_ptr<Type>& state)
+{
+    if (!state)
+    {
+        return false;
+    }
+
+    return state->IsValid();
+}
+
 } // namespace detail
 
 
@@ -247,7 +258,7 @@ struct future
     template <typename ...Value>
     std::error_code get_value(Value&&... val)
     {
-        if (!m_state || !m_state->IsValid())
+        if (!detail::IsValid(m_state))
         {
             return make_error_code(error_codes::invalid_shared_state);
         }
@@ -282,7 +293,10 @@ struct promise
     promise(promise&& ) = default;
     promise& operator=(promise&& ) = default;
 
-
+    bool valid() const
+    {
+        return detail::IsValid(m_state);
+    }
 
     // communication with future
 
@@ -295,25 +309,54 @@ struct promise
     template <typename ...Args>
     void set_value(Args&&... args)
     {
-        assert(m_state && m_state->IsValid());
+        assert(detail::IsValid(m_state));
 
         m_state->SetValue(std::forward<Args>(args)...);
     }
 
     void set_error(const std::error_code& ec)
     {
-        assert(m_state && m_state->IsValid());
+        assert(detail::IsValid(m_state));
 
         m_state->SetError(ec);
     }
 
     // promise_type implementation
 
+    /// @note This type is used for early error detection
+    /// If we fail to create shared state for future/promise
+    /// we stop further processing as soon as possible
+	struct destroy_coro_if
+	{
+        explicit destroy_coro_if(bool shouldDestroy)
+            : m_shouldDestroy(shouldDestroy)
+        {
+        }
 
-    std::experimental::suspend_never initial_suspend()
+		bool await_ready() _NOEXCEPT
+		{
+			return !m_shouldDestroy;
+		}
+
+		void await_suspend(std::experimental::coroutine_handle<> coroutine) _NOEXCEPT
+		{
+            assert(m_shouldDestroy);
+
+            coroutine.destroy();
+		}
+
+		void await_resume() _NOEXCEPT
+		{
+            assert(!m_shouldDestroy);
+		}
+
+    private:
+        bool m_shouldDestroy;
+	};
+
+    destroy_coro_if initial_suspend()
     {
-        // todo: prograholic: Maybe we may use it for early error detection
-        return {};
+        return destroy_coro_if(!detail::IsValid(m_state));
     }
 
     future<Type> get_return_object()
