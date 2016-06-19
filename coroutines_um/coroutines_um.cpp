@@ -9,9 +9,6 @@ int main()
     TryCoroWaiter();
     TRACE() << std::endl << std::endl;
 
-    TryCoroWaiterNoexcept();
-    TRACE() << std::endl << std::endl;
-
     TestChronoAwait();
     TRACE() << std::endl << std::endl;
 

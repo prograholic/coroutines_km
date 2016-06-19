@@ -2,6 +2,20 @@
 
 
 
+typedef std::pair<std::string, DWORD> error_info_t;
+
+#define EXPECT_EX(status, error) \
+do { if (!(status)) {auto le = (error); throw error_info_t(std::make_pair(STR(status), le));}} while(0)
+
+#define TRACE() std::cerr << __FUNCTION__ << ": "
+
+#define CALL_SPY() TRACE() << __LINE__ << std::endl
+
+
+#define EXPECT(status) EXPECT_EX(status, ::GetLastError())
+
+
+
 struct Waiter
 {
     HANDLE m_event;

@@ -1,13 +1,9 @@
 #include "common.h"
 
 
-#include <experimental/resumable>
-
-#include <future>
-
 #include "future_promise.h"
 
-namespace has_exceptions
+namespace no_exceptions
 {
 
 
@@ -24,7 +20,6 @@ public:
         , m_coroutineHandle()
         , m_value(0)
     {
-        CALL_SPY();
     }
 
 protected:
@@ -87,7 +82,6 @@ struct WriteAwaiter : AwaiterBase
 
     value_type await_resume()
     {
-        CALL_SPY();
         return m_value;
     }
 
@@ -97,9 +91,30 @@ private:
 };
 
 
-WriteAwaiter WriteAsync()
+coro::future<void>
+WriteAndTrace(HANDLE file)
 {
-    CALL_SPY();
+    auto bytesWritten = await WriteAwaiter{file};
+
+    TRACE() << "WOW!!! we have result (bytes written): " << bytesWritten << std::endl;
+}
+
+} // namespace no_exceptions
+
+void TryCoroWaiter()
+{
+    struct HandleDeleter
+    {
+        void operator()(HANDLE handle)
+        {
+            if (handle != INVALID_HANDLE_VALUE)
+            {
+                ::CloseHandle(handle);
+            }
+        }
+    };
+    
+
     HANDLE file = ::CreateFile(TEXT("2.txt"),
                                GENERIC_WRITE,
                                FILE_SHARE_READ,
@@ -107,57 +122,24 @@ WriteAwaiter WriteAsync()
                                CREATE_ALWAYS,
                                FILE_FLAG_OVERLAPPED,
                                nullptr);
-    EXPECT(file != INVALID_HANDLE_VALUE);
-
-
-    return WriteAwaiter{file};
-}
-
-
-
-
-//std::future<void>
-coro::future<void>
-WriteAndTrace()
-{
-    CALL_SPY();
-    await WriteAsync();
-    
-    auto bytesWritten = await WriteAsync();
-    TRACE() << "WOW!!! we have result (bytes written): " << bytesWritten << std::endl;
-}
-
-} // namespace has_exceptions
-
-void TryCoroWaiter()
-{
-    using namespace has_exceptions;
-
-    CALL_SPY();
-    try
+    if (file == INVALID_HANDLE_VALUE)
     {
-        CALL_SPY();
-        auto&& res = WriteAndTrace();
-        CALL_SPY();
-
-        auto err = res.get_value();
-
-        if (err)
-        {
-            TRACE() << "fail with error: " << err.message() << std::endl;
-        }
-        else
-        {
-            TRACE() << "finished" << std::endl;
-        }
-
-
-        CALL_SPY();
-    }
-    catch (const error_info_t& e)
-    {
-        TRACE() << e.first << ": " << e.second << std::endl;
+        std::error_code err = coro::detail::GetLastErrorCode();
+        TRACE() << "CreateFile failed:: " << err.message() << std::endl;
+        return;
     }
 
-    CALL_SPY();
+    auto&& res = no_exceptions::WriteAndTrace(file);
+    auto err = res.get_value();
+
+    ::CloseHandle(file);
+
+    if (err)
+    {
+        TRACE() << "fail with error: " << err.message() << std::endl;
+    }
+    else
+    {
+        TRACE() << "finished" << std::endl;
+    }
 }

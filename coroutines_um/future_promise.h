@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 
+#include <experimental/resumable>
 #include <system_error>
 #include <memory>
 #include <cassert>
