@@ -1,197 +1,68 @@
 #include <wdm.h>
 
-namespace std
+#include "irp_handlers.h"
+
+#define CORO_NT_DEVICE_NAME      L"\\Device\\CoroTest"
+#define CORO_DOS_DEVICE_NAME     L"\\DosDevices\\CoroTest"
+
+
+
+void CoroDriverUnload(PDRIVER_OBJECT driverObject)
 {
-namespace experimental
-{
+    UNICODE_STRING uniWin32NameString;
+    RtlInitUnicodeString(&uniWin32NameString, CORO_DOS_DEVICE_NAME);
 
-template <typename Ret, typename... Ts>
-struct coroutine_traits
-{
-    using promise_type = typename Ret::promise_type;
-};
+    IoDeleteSymbolicLink( &uniWin32NameString );
 
-template <typename PromiseType = void>
-struct coroutine_handle;
-
-template <>
-struct coroutine_handle<void>
-{
-};
-
-template <typename PromiseType>
-struct coroutine_handle : public coroutine_handle<void>
-{
-};
-
-#if 0
-template <typename Ret, typename... Ts>
-struct _Resumable_helper_traits
-{
-    using traits_type = coroutine_traits<Ret, Ts...>;
-    using promise_type = typename traits_type::promise_type;
-    using handle_type = coroutine_handle<promise_type>;
-
-    static promise_type* _Promise_from_frame(void* addr) noexcept
+    if (driverObject->DeviceObject)
     {
-        return reinterpret_cast<promise_type*>(reinterpret_cast<char*>(addr) - handle_type::AlignedSize);
-    }
-
-    static void _ConstructPromise(void* _Addr, void* _Resume_addr)
-    {
-        *reinterpret_cast<void**>(_Addr) = _Resume_addr;
-        *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(_Addr) + sizeof(void*)) = 2;
-        auto _Prom = _Promise_from_frame(_Addr);
-        ::new (static_cast<void*>(_Prom)) promise_type();
-    }
-
-
-    static void _DestructPromise(void* _Addr)
-    {
-        _Promise_from_frame(_Addr)->~promise_type();
-    }
-};
-
-#endif //0
-
-} // namespace experimental
-} // namespace std
-
-template <typename Type>
-struct simple_async_result
-{
-    simple_async_result(const Type& /* val */)
-    {
-    }
-
-    int await_resume()
-    {
-    }
-};
-
-template <typename Type>
-struct simple_generator
-{
-    struct promise_type
-    {
-        const Type* m_current_value;
-
-        promise_type& get_return_object()
-        {
-            return *this;
-        }
-
-        void yield_value(const Type& val)
-        {
-            m_current_value = &val;
-        }
-
-        bool initial_suspend()
-        {
-            return true;
-        }
-
-        bool final_suspend()
-        {
-            return true;
-        }
-
-        //typedef Type return_value;
-
-#if 0
-        int return_value()
-        {
-        }
-#endif //9
-    };
-
-    struct iterator
-    {
-        iterator& operator++()
-        {
-            return *this;
-        }
-
-        bool operator==(const iterator& /* right */) const
-        {
-            return false;
-            //return _Coro == _Right._Coro;
-        }
-
-        bool operator!=(const iterator& right) const
-        {
-            return !(*this == right);
-        }
-
-        Type const& operator*() const
-        {
-            //return *_Coro.promise()._CurrentValue;
-        }
-
-        Type const* operator->() const
-        {
-            //
-        }
-    };
-
-    iterator begin()
-    {
-    }
-
-    iterator end()
-    {
-    }
-};
-
-
-
-simple_async_result<int> Bar()
-{
-    return 10;
-}
-
-
-simple_generator<int> Foo()
-{
-    int res = 0;
-    for ( ; ; )
-    {
-        //auto res = __await Bar();
-        //__yield_value res;
-        co_yield res;
-        ++res;
+        IoDeleteDevice(driverObject->DeviceObject);
     }
 }
 
 
-
-int Baz(size_t count)
-{
-    int res = 0;
-
-    for (auto val: Foo())
-    {
-        if (count == 0)
-        {
-            break;
-        }
-
-        --count;
-        res += val;
-    }
-
-    return res;
-}
-
+extern "C" DRIVER_INITIALIZE DriverEntry;
 
 extern "C"
-NTSTATUS DriverEntry(IN PDRIVER_OBJECT /* theDriverObject */,
-                     IN PUNICODE_STRING /* theRegistryPath */)
+NTSTATUS DriverEntry(IN PDRIVER_OBJECT driverObject,
+                     IN PUNICODE_STRING /* registryPath */)
 {
+    PDEVICE_OBJECT  deviceObject = nullptr;
+    
+    UNICODE_STRING  ntUnicodeString;
+    RtlInitUnicodeString(&ntUnicodeString, CORO_NT_DEVICE_NAME);
 
-    //__await
+    auto status = IoCreateDevice(driverObject,
+                                 0,
+                                 &ntUnicodeString,
+                                 FILE_DEVICE_UNKNOWN,
+                                 FILE_DEVICE_SECURE_OPEN,
+                                 FALSE,
+                                 &deviceObject);
+    if (!NT_SUCCESS(status))
+    {
+        DbgPrint("Couldn't create the device object: %x \n", status);
+        return status;
+    }
 
-    //__yield_value
+    driverObject->MajorFunction[IRP_MJ_CREATE] = CreateDevice;
+    driverObject->MajorFunction[IRP_MJ_CLOSE] = CloseDevice;
+    //driverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = SDmaDeviceControl;
+    driverObject->DriverUnload = CoroDriverUnload;
 
-    return STATUS_SUCCESS;
+    UNICODE_STRING ntWin32NameString;
+    RtlInitUnicodeString(&ntWin32NameString, CORO_DOS_DEVICE_NAME);
+
+    status = IoCreateSymbolicLink(&ntWin32NameString, &ntUnicodeString);
+    if (!NT_SUCCESS(status))
+    {
+        //
+        // Delete everything that this routine has allocated.
+        //
+        DbgPrint("Couldn't create symbolic link: %X\n", status);
+        IoDeleteDevice(deviceObject);
+    }
+
+
+    return status;
 }

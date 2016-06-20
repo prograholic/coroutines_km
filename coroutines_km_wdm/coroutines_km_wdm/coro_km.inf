@@ -1,5 +1,5 @@
 ;
-; coroutines_km_wdm.inf
+; coro_km.inf
 ;
 
 [Version]
@@ -8,7 +8,7 @@ Class=
 ClassGuid={447203B1-B3CC-4014-B164-DCD738B98BE7}
 Provider=%ProviderName%
 DriverVer=
-CatalogFile=coroutines_km_wdm.cat
+CatalogFile=coro_km.cat
 
 [DestinationDirs]
 DefaultDestDir = 12
@@ -29,5 +29,5 @@ DefaultDestDir = 12
 [Strings]
 ManufacturerName=""
 ClassName=""
-DiskName="coroutines_km_wdm Source Disk"
+DiskName="coro_km Source Disk"
 ProviderName="prograholic"
