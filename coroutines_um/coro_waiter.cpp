@@ -40,7 +40,7 @@ protected:
     {
         AwaiterBase* me = GetAwaiterBase(overlapped);
 
-        me->m_coroutineHandle.promise().set_error(coro::detail::GetErrorCodeFromWindowsResult(error));
+        me->m_coroutineHandle.promise().set_error(std_emu::GetErrorCodeFromWindowsResult(error));
         me->m_value = bytesWritten;
 
         me->m_coroutineHandle.resume();
@@ -74,7 +74,7 @@ struct WriteAwaiter : AwaiterBase
         auto success = ::WriteFileEx(m_handle, m_data.data(), m_data.size(), GetOverlapped(), OnWrite);
         if (!success)
         {
-            m_coroutineHandle.promise().set_error(coro::detail::GetLastErrorCode());
+            m_coroutineHandle.promise().set_error(std_emu::GetLastErrorCode());
             m_coroutineHandle.destroy();
             return;
         }
@@ -124,8 +124,8 @@ void TryCoroWaiter()
                                nullptr);
     if (file == INVALID_HANDLE_VALUE)
     {
-        std::error_code err = coro::detail::GetLastErrorCode();
-        TRACE() << "CreateFile failed:: " << err.message() << std::endl;
+        std_emu::error_code err = std_emu::GetLastErrorCode();
+        TRACE() << "CreateFile failed:: " << err.value() << std::endl;
         return;
     }
 
@@ -136,7 +136,7 @@ void TryCoroWaiter()
 
     if (err)
     {
-        TRACE() << "fail with error: " << err.message() << std::endl;
+        TRACE() << "fail with error: " << err.value() << std::endl;
     }
     else
     {

@@ -1,187 +1,81 @@
 #pragma once
 
-#include <Windows.h>
+#include <std_emu.h>
 
-#include <experimental/resumable>
-#include <system_error>
-#include <memory>
-#include <cassert>
+#include <experimental/coro.h>
 
 namespace coro
 {
-
-enum class error_codes
-{
-    invalid_shared_state = 1000,
-
-}; // enum class coro_error_codes
-
-} // namespace coro
-
-
-namespace std
-{
-
-template <>
-struct is_error_code_enum<coro::error_codes> : public true_type
-{
-};
-
-} // namespace std
-
-namespace coro
-{
-
-struct coro_error_category : public std::error_category
-{
-    virtual const char *name() const _NOEXCEPT
-    {
-        return "coro";
-    }
-
-	virtual std::string message(int err) const
-    {
-        switch (err)
-        {
-        case error_codes::invalid_shared_state:
-            return "invalid shared state";
-        }
-
-        return "<UNKNOWN>";
-    }
-};
-
-
-inline
-const std::error_category& coro_category()
-{
-    return (std::_Immortalize<coro_error_category>());
-}
-
-inline
-std::error_code make_error_code(error_codes errorCode)
-{
-    return std::error_code(static_cast<int>(errorCode), coro_category());
-}
-
 
 namespace detail
 {
 
-std::error_code GetErrorCodeFromWindowsResult(DWORD result)
-{
-    return std::error_code(result, std::system_category());
-}
-
-std::error_code GetLastErrorCode()
-{
-    return GetErrorCodeFromWindowsResult(::GetLastError());
-}
-
-
+template <typename PlatformEventType = std_emu::DefaultPlatformEvent>
 struct shared_state_base
 {
 public:
 
-    shared_state_base()
-        : m_event(nullptr)
-        , m_error()
-    {
-    }
+    shared_state_base() = default;
 
     shared_state_base(const shared_state_base& ) = delete;
     shared_state_base& operator=(const shared_state_base& ) = delete;
 
-    shared_state_base(shared_state_base&& other)
-        : m_event(other.m_event)
-        , m_error(std::move(other.m_error))
+    shared_state_base(shared_state_base&&) = default;
+    shared_state_base& operator=(shared_state_base&& other) = default;
+
+    std_emu::error_code Initialize()
     {
-        other.m_event = nullptr;
+        return m_event.Initialize();
     }
 
-    shared_state_base& operator=(shared_state_base&& other)
-    {
-        if (&other != this)
-        {
-            m_event = other.m_event;
-            other.m_event = nullptr;
-
-            m_error = std::move(other.m_error);
-        }
-
-        return *this;
-    }
-
-    ~shared_state_base()
-    {
-        if (m_event)
-        {
-            ::CloseHandle(m_event);
-        }
-    }
-
-
-    std::error_code Initialize()
-    {
-        m_event = ::CreateEvent(nullptr, true, true, nullptr);
-        
-        return GetLastErrorCode();
-    }
-
-    std::error_code Wait()
+    std_emu::error_code Wait()
     {
         if (!IsValid())
         {
-            return error_codes::invalid_shared_state;
+            return std_emu::errc::coro_invalid_shared_state;
         }
 
-        auto status = WaitForSingleObjectEx(m_event, INFINITE, true);
-        if (status != WAIT_IO_COMPLETION)
-        {
-            return GetLastErrorCode();
-        }
-
-        return std::error_code();
+        return m_event.Wait();
     }
 
     bool IsValid() const
     {
-        return m_event != nullptr;
+        return m_event.IsValid();
     }
 
-    void SetError(const std::error_code& ec)
+    void SetError(const std_emu::error_code& ec)
     {
         m_error = ec;
     }
 
-    std::error_code GetError() const
+    std_emu::error_code GetError() const
     {
         return m_error;
     }
 
 private:
-    HANDLE m_event;
-    std::error_code m_error;
+    PlatformEventType m_event;
+    std_emu::error_code m_error;
 };
 
 
 
 template <typename Type>
-struct shared_state : private shared_state_base
+struct shared_state : private shared_state_base<>
 {
 public:
 
-    using shared_state_base::Initialize;
-    using shared_state_base::IsValid;
-    using shared_state_base::SetError;
-    using shared_state_base::Wait;
+    using shared_state_base<>::Initialize;
+    using shared_state_base<>::IsValid;
+    using shared_state_base<>::SetError;
+    using shared_state_base<>::Wait;
 
     void SetValue(const Type& value)
     {
         m_value = value;
     }
 
-    std::error_code GetValue(Type& value)
+    std_emu::error_code GetValue(Type& value)
     {
         auto err = GetError();
         if (err)
@@ -189,8 +83,8 @@ public:
             return err;
         }
 
-        value = std::move(m_value);
-        return std::error_code();
+        value = std_emu::move(m_value);
+        return std_emu::error_code();
     }
 
 private:
@@ -198,20 +92,20 @@ private:
 };
 
 template <>
-struct shared_state<void> : private shared_state_base
+struct shared_state<void> : private shared_state_base<>
 {
 public:
 
-    using shared_state_base::Initialize;
-    using shared_state_base::IsValid;
-    using shared_state_base::SetError;
-    using shared_state_base::Wait;
+    using shared_state_base<>::Initialize;
+    using shared_state_base<>::IsValid;
+    using shared_state_base<>::SetError;
+    using shared_state_base<>::Wait;
 
     void SetValue()
     {
     }
 
-    std::error_code GetValue()
+    std_emu::error_code GetValue()
     {
         return GetError();
     }
@@ -219,7 +113,7 @@ public:
 
 
 template <typename Type>
-using shared_state_ptr = std::shared_ptr<shared_state<Type>>;
+using shared_state_ptr = std_emu::shared_ptr<shared_state<Type>>;
 
 template <typename Type>
 bool IsValid(const shared_state_ptr<Type>& state)
@@ -257,11 +151,11 @@ struct future
     // obtain result
 
     template <typename ...Value>
-    std::error_code get_value(Value&&... val)
+    std_emu::error_code get_value(Value&&... val)
     {
         if (!detail::IsValid(m_state))
         {
-            return make_error_code(error_codes::invalid_shared_state);
+            return std_emu::errc::coro_invalid_shared_state;
         }
 
         auto err = m_state->Wait();
@@ -315,7 +209,7 @@ struct promise
         m_state->SetValue(std::forward<Args>(args)...);
     }
 
-    void set_error(const std::error_code& ec)
+    void set_error(const std_emu::error_code& ec)
     {
         assert(detail::IsValid(m_state));
 
@@ -334,19 +228,19 @@ struct promise
         {
         }
 
-		bool await_ready() _NOEXCEPT
+		bool await_ready() noexcept
 		{
 			return !m_shouldDestroy;
 		}
 
-		void await_suspend(std::experimental::coroutine_handle<> coroutine) _NOEXCEPT
+		void await_suspend(std::experimental::coroutine_handle<> coroutine) noexcept
 		{
             assert(m_shouldDestroy);
 
             coroutine.destroy();
 		}
 
-		void await_resume() _NOEXCEPT
+		void await_resume() noexcept
 		{
             assert(!m_shouldDestroy);
 		}
@@ -373,23 +267,25 @@ struct promise
 private:
     detail::shared_state_ptr<Type> m_state;
 
-    std::error_code init()
+    std_emu::error_code init()
     {
-        detail::shared_state_ptr<Type> tmp(new (std::nothrow)detail::shared_state<Type>());
-        if (!tmp)
+        detail::shared_state_ptr<Type> tmp;
+
+        auto err = std_emu::make_shared(tmp);
+        if (err)
         {
-            return std::make_error_code(std::errc::not_enough_memory);
+            return err;
         }
 
-        auto err = tmp->Initialize();
+        err = tmp->Initialize();
         if (err)
         {
             return err;
         }
         
-        m_state = std::move(tmp);
+        m_state = std_emu::move(tmp);
 
-        return std::error_code();
+        return std_emu::error_code();
     }
 };
 

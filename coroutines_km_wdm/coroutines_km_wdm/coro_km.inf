@@ -25,6 +25,10 @@ DefaultDestDir = 12
 
 [Standard.NT$ARCH$]
 
+[DefaultInstall.nt]
+CopyFiles=coro_km.sys
+CopyINF=coro_km.inf
+
 
 [Strings]
 ManufacturerName=""

@@ -7,6 +7,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coroutines_um", "coroutines
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coroutines_km_wdm", "coroutines_km_wdm\coroutines_km_wdm\coroutines_km_wdm.vcxproj", "{39F7CC5F-4C05-42B3-921E-64828C9FA538}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}"
+	ProjectSection(SolutionItems) = preProject
+		shared\coro_platform.h = shared\coro_platform.h
+		shared\future_promise.h = shared\future_promise.h
+		shared\std_emu.h = shared\std_emu.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "experimental", "experimental", "{A92D97D4-1196-49C7-8105-FEA31FAAF8B7}"
+	ProjectSection(SolutionItems) = preProject
+		shared\experimental\coro.h = shared\experimental\coro.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -58,5 +70,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A92D97D4-1196-49C7-8105-FEA31FAAF8B7} = {CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}
 	EndGlobalSection
 EndGlobal
