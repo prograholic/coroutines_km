@@ -4,30 +4,62 @@
 
 [Version]
 Signature="$WINDOWS NT$"
-Class=
-ClassGuid={447203B1-B3CC-4014-B164-DCD738B98BE7}
+Class="System"
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
 Provider=%ProviderName%
 DriverVer=
 CatalogFile=coro_km.cat
+DriverPackageType=KernelService
 
 [DestinationDirs]
 DefaultDestDir = 12
-
-
-[SourceDisksNames]
-1 = %DiskName%,,,""
-
-[SourceDisksFiles]
-
 
 [Manufacturer]
 %ManufacturerName%=Standard,NT$ARCH$
 
 [Standard.NT$ARCH$]
 
-[DefaultInstall.nt]
-CopyFiles=coro_km.sys
-CopyINF=coro_km.inf
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+coro_km.sys = 1
+
+
+
+;; Default install sections
+
+[DefaultInstall]
+OptionDesc          = %CoroServiceDesc%
+CopyFiles           = coro.DriverFiles
+
+[DefaultInstall.nt$ARCH$]
+OptionDesc          = %CoroServiceDesc%
+CopyFiles           = coro.DriverFiles
+
+[DefaultInstall.Services]
+OptionDesc          = %CoroServiceDesc%
+AddService          = %CoroServiceName%,,Coro.Service
+
+[DefaultInstall.nt$ARCH$.Services]
+AddService          = %CoroServiceName%,,Coro.Service
+
+; Services Section
+
+
+[Coro.Service]
+DisplayName      = %CoroDisplayName%
+Description      = %CoroServiceName%
+ServiceBinary    = %12%\coro_km.sys
+ServiceType      = 1                            ;SERVICE_KERNEL_DRIVER
+StartType        = 1                            ;SERVICE_SYSTEM_START
+ErrorControl     = 1                            ;SERVICE_ERROR_NORMAL
+LoadOrderGroup   = "Boot Bus Extender"
+
+
+[Coro.DriverFiles]
+coro_km.sys,,,0x00016002  ; (DELFLG_IN_USE1 | COPYFLG_IN_USE_RENAME | COPYFLG_NOPRUNE | COPYFLG_NOSKIP)
+
 
 
 [Strings]
@@ -35,3 +67,6 @@ ManufacturerName=""
 ClassName=""
 DiskName="coro_km Source Disk"
 ProviderName="prograholic"
+CoroServiceDesc="coro PoC kernel driver"
+CoroDisplayName="coro PoC kernel driver"
+CoroServiceName="coro PoC kernel driver"

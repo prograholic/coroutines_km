@@ -3,6 +3,33 @@
 #include <future_promise.h>
 
 
+void * __cdecl operator new(unsigned int)
+{
+    return nullptr;
+}
+
+void __cdecl operator delete(void *,unsigned int)
+{
+
+}
+
+_Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(_Size)
+void * __cdecl operator new(size_t _Size, struct std::nothrow_t const &)
+{
+    (void)_Size;
+    return nullptr;
+}
+
+namespace std
+{
+nothrow_t const nothrow;
+}
+
+
+
+
+
+
 NTSTATUS DoSomeAsyncShit(void*, void*)
 {
     return STATUS_SUCCESS;
@@ -104,9 +131,9 @@ std_emu::error_code Call()
 _Dispatch_type_(IRP_MJ_CREATE)
 NTSTATUS CreateDevice(_In_ DEVICE_OBJECT* /* deviceObject */, _Inout_ IRP* /* irp */)
 {
-    return nx::Call().value();
+    //return nx::Call().value();
 
-    //return STATUS_SUCCESS;
+    return STATUS_SUCCESS;
 }
 
 _Dispatch_type_(IRP_MJ_CLOSE)
