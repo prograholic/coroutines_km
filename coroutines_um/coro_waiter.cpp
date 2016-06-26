@@ -40,8 +40,9 @@ protected:
     {
         AwaiterBase* me = GetAwaiterBase(overlapped);
 
-        me->m_coroutineHandle.promise().set_error(std_emu::GetErrorCodeFromWindowsResult(error));
         me->m_value = bytesWritten;
+
+        me->m_coroutineHandle.promise().set_error(std_emu::GetErrorCodeFromWindowsResult(error));
 
         me->m_coroutineHandle.resume();
     }
@@ -71,7 +72,7 @@ struct WriteAwaiter : AwaiterBase
             return;
         }
 
-        auto success = ::WriteFileEx(m_handle, m_data.data(), m_data.size(), GetOverlapped(), OnWrite);
+        auto success = ::WriteFileEx(m_handle.get(), m_data.data(), m_data.size(), GetOverlapped(), OnWrite);
         if (!success)
         {
             m_coroutineHandle.promise().set_error(std_emu::GetLastErrorCode());
@@ -86,7 +87,7 @@ struct WriteAwaiter : AwaiterBase
     }
 
 private:
-    HANDLE m_handle;
+    std_emu::HandleGuard m_handle;
     blob_t m_data;
 };
 
@@ -103,18 +104,6 @@ WriteAndTrace(HANDLE file)
 
 void TryCoroWaiter()
 {
-    struct HandleDeleter
-    {
-        void operator()(HANDLE handle)
-        {
-            if (handle != INVALID_HANDLE_VALUE)
-            {
-                ::CloseHandle(handle);
-            }
-        }
-    };
-    
-
     HANDLE file = ::CreateFile(TEXT("2.txt"),
                                GENERIC_WRITE,
                                FILE_SHARE_READ,
@@ -131,8 +120,6 @@ void TryCoroWaiter()
 
     auto&& res = no_exceptions::WriteAndTrace(file);
     auto err = res.get_value();
-
-    ::CloseHandle(file);
 
     if (err)
     {

@@ -1,5 +1,7 @@
 #include "common.h"
 
+#include <coro_platform.h>
+
 
 
 typedef std::pair<std::string, DWORD> error_info_t;
@@ -48,7 +50,7 @@ public:
     Waiter WriteAsync()
     {
         TRACE() << "write async end" << std::endl;
-        EXPECT(::WriteFileEx(m_handle, m_data.data(), m_data.size(), GetOverlapped(), AsyncIo::OnWrite));
+        EXPECT(::WriteFileEx(m_handle.get(), m_data.data(), m_data.size(), GetOverlapped(), AsyncIo::OnWrite));
 
         TRACE() << "write async end" << std::endl;
 
@@ -58,11 +60,10 @@ public:
     ~AsyncIo()
     {
         ::CloseHandle(hEvent);
-        ::CloseHandle(m_handle);
     }
 
 private:
-    HANDLE m_handle;
+    std_emu::HandleGuard m_handle;
 
     blob_t m_data;
 

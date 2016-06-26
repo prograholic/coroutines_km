@@ -53,6 +53,16 @@ public:
         return m_error;
     }
 
+    std_emu::error_code Notify()
+    {
+        if (!IsValid())
+        {
+            return std_emu::errc::coro_invalid_shared_state;
+        }
+
+        return m_event.Notify();
+    }
+
 private:
     PlatformEventType m_event;
     std_emu::error_code m_error;
@@ -69,6 +79,7 @@ public:
     using shared_state_base<>::IsValid;
     using shared_state_base<>::SetError;
     using shared_state_base<>::Wait;
+    using shared_state_base<>::Notify;
 
     void SetValue(const Type& value)
     {
@@ -100,6 +111,7 @@ public:
     using shared_state_base<>::IsValid;
     using shared_state_base<>::SetError;
     using shared_state_base<>::Wait;
+    using shared_state_base<>::Notify;
 
     void SetValue()
     {
@@ -216,6 +228,15 @@ struct promise
         m_state->SetError(ec);
     }
 
+#if 0
+    void notify()
+    {
+        assert(detail::IsValid(m_state));
+
+        m_state->Notify();
+    }
+#endif //0
+
     // promise_type implementation
 
     /// @note This type is used for early error detection
@@ -259,9 +280,54 @@ struct promise
         return get_future();
     }
 
-    std::experimental::suspend_never final_suspend()
+#if defined(CORO_NO_EXCEPTIONS)
+
+    static auto get_return_object_on_allocation_failure()
     {
-        return {};
+        return coro::future<Type>{};
+    }
+
+#endif /* CORO_NO_EXCEPTIONS */
+
+    /// This type is used for clients notification
+    /// We cannot invoke `notify()` after `coro.resume()` because promise will be destroyed after resuming
+    ///
+    /// Also we cannot notify clients BEFORE corutine resumes
+    /// Because we may get race condition:
+    /// client may receive notification, but corutine is not resumed yet
+    ///
+    /// So this type performs notification if promise is valid.
+	struct notify_future
+	{
+        notify_future(detail::shared_state_ptr<Type> state)
+            : m_state(state)
+        {
+        }
+
+		bool await_ready() noexcept
+		{
+            if (detail::IsValid(m_state))
+            {
+                m_state->Notify();
+            }
+
+			return true;
+		}
+
+		void await_suspend(std::experimental::coroutine_handle<> /* coroutine */) noexcept
+		{
+		}
+
+		void await_resume() noexcept
+		{
+		}
+
+        detail::shared_state_ptr<Type> m_state;
+	};
+
+    notify_future final_suspend()
+    {
+        return {m_state};
     }
 
 private:

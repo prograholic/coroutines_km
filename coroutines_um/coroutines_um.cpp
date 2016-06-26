@@ -1,16 +1,38 @@
 #include "common.h"
 
-
-int main()
+bool ShouldConnectToDriver(int argc, char* argv [])
 {
-    TryWinApiWaiter();
-    TRACE() << std::endl << std::endl;
+    if (argc != 2)
+    {
+        return false;
+    }
 
-    TryCoroWaiter();
-    TRACE() << std::endl << std::endl;
+    if (argv[1] == std::string("--connect_to_driver"))
+    {
+        return true;
+    }
 
-    TestChronoAwait();
-    TRACE() << std::endl << std::endl;
+    return false;
+}
+
+
+int main(int argc, char* argv [])
+{
+    if (ShouldConnectToDriver(argc, argv))
+    {
+        ConnectToDriver();
+    }
+    else
+    {
+        TryWinApiWaiter();
+        TRACE() << std::endl << std::endl;
+
+        TryCoroWaiter();
+        TRACE() << std::endl << std::endl;
+
+        TestChronoAwait();
+        TRACE() << std::endl << std::endl;
+    }
 
     return 0;
 }

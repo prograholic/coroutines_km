@@ -10,6 +10,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}"
 	ProjectSection(SolutionItems) = preProject
 		shared\coro_platform.h = shared\coro_platform.h
+		shared\driver_connection.h = shared\driver_connection.h
 		shared\future_promise.h = shared\future_promise.h
 		shared\std_emu.h = shared\std_emu.h
 	EndProjectSection

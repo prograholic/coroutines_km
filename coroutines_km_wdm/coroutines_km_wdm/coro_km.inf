@@ -54,7 +54,6 @@ ServiceBinary    = %12%\coro_km.sys
 ServiceType      = 1                            ;SERVICE_KERNEL_DRIVER
 StartType        = 1                            ;SERVICE_SYSTEM_START
 ErrorControl     = 1                            ;SERVICE_ERROR_NORMAL
-LoadOrderGroup   = "Boot Bus Extender"
 
 
 [Coro.DriverFiles]
@@ -67,6 +66,6 @@ ManufacturerName=""
 ClassName=""
 DiskName="coro_km Source Disk"
 ProviderName="prograholic"
-CoroServiceDesc="coro PoC kernel driver"
-CoroDisplayName="coro PoC kernel driver"
-CoroServiceName="coro PoC kernel driver"
+CoroServiceDesc="coro_km"
+CoroDisplayName="coro_km"
+CoroServiceName="coro_km"

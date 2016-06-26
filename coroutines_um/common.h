@@ -16,6 +16,8 @@ typedef std::vector<unsigned char> blob_t;
 constexpr size_t DataSize = 16 * 1024 * 1024;
 
 
+
 void TryWinApiWaiter();
 void TryCoroWaiter();
 void TestChronoAwait();
+void ConnectToDriver();

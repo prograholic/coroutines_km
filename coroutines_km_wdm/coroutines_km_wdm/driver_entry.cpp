@@ -1,10 +1,10 @@
 #include <wdm.h>
 
+#include <wdmsec.h>
+
+#include <driver_connection.h>
+
 #include "irp_handlers.h"
-
-#define CORO_NT_DEVICE_NAME      L"\\Device\\CoroTest"
-#define CORO_DOS_DEVICE_NAME     L"\\DosDevices\\CoroTest"
-
 
 
 void CoroDriverUnload(PDRIVER_OBJECT driverObject)
@@ -12,7 +12,7 @@ void CoroDriverUnload(PDRIVER_OBJECT driverObject)
     UNICODE_STRING uniWin32NameString;
     RtlInitUnicodeString(&uniWin32NameString, CORO_DOS_DEVICE_NAME);
 
-    IoDeleteSymbolicLink( &uniWin32NameString );
+    IoDeleteSymbolicLink(&uniWin32NameString);
 
     if (driverObject->DeviceObject)
     {
@@ -32,22 +32,23 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT driverObject,
     UNICODE_STRING  ntUnicodeString;
     RtlInitUnicodeString(&ntUnicodeString, CORO_NT_DEVICE_NAME);
 
-    auto status = IoCreateDevice(driverObject,
-                                 0,
-                                 &ntUnicodeString,
-                                 FILE_DEVICE_UNKNOWN,
-                                 FILE_DEVICE_SECURE_OPEN,
-                                 FALSE,
-                                 &deviceObject);
+    auto status = IoCreateDeviceSecure(driverObject,
+                                       0,
+                                       &ntUnicodeString,
+                                       FILE_DEVICE_UNKNOWN,
+                                       FILE_DEVICE_SECURE_OPEN,
+                                       FALSE,
+                                       &SDDL_DEVOBJ_SYS_ALL_ADM_ALL,
+                                       nullptr,
+                                       &deviceObject);
     if (!NT_SUCCESS(status))
     {
-        DbgPrint("Couldn't create the device object: %x \n", status);
+        CORO_TRACE("Couldn't create the device object: %x", status);
         return status;
     }
 
     driverObject->MajorFunction[IRP_MJ_CREATE] = CreateDevice;
     driverObject->MajorFunction[IRP_MJ_CLOSE] = CloseDevice;
-    //driverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = SDmaDeviceControl;
     driverObject->DriverUnload = CoroDriverUnload;
 
     UNICODE_STRING ntWin32NameString;
@@ -59,7 +60,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT driverObject,
         //
         // Delete everything that this routine has allocated.
         //
-        DbgPrint("Couldn't create symbolic link: %X\n", status);
+        CORO_TRACE("Couldn't create symbolic link: %X", status);
         IoDeleteDevice(deviceObject);
     }
 

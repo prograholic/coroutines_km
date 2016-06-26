@@ -8,6 +8,8 @@
 
 #define CORO_DECLARE_NTSTATUS_VALUE(severity, facility, code) ((severity << 30) | (facility << 16) | code)
 
+#define CORO_NO_EXCEPTIONS
+
 namespace std_emu
 {
 
@@ -19,9 +21,12 @@ enum class errc
 
     success = STATUS_SUCCESS,
 
-    not_enough_memory = STATUS_NO_MEMORY
+    not_enough_memory = STATUS_NO_MEMORY,
+
+    invalid_parameter = STATUS_INVALID_PARAMETER,
 };
 
+inline
 errc GetErrorCodeFromNtStatus(NTSTATUS status)
 {
     return static_cast<errc>(status);
@@ -79,6 +84,13 @@ struct DefaultPlatformEvent
         return errc::success;
     }
 
+    errc Notify()
+    {
+        ::KeSetEvent(&m_event, IO_NO_INCREMENT, FALSE);
+
+        return errc::success;
+    }
+
 private:
     KEVENT m_event;
 };
@@ -90,6 +102,10 @@ private:
 #include <Windows.h>
 
 #include <cassert>
+
+#if !defined(_CPPUNWIND)
+#define CORO_NO_EXCEPTIONS
+#endif /* _CPPUNWIND */
 
 namespace std_emu
 {
@@ -117,79 +133,152 @@ struct DefaultErrorCodeTraits
     }
 };
 
+inline
 errc GetErrorCodeFromWindowsResult(DWORD result)
 {
     return static_cast<errc>(result);
 }
 
+inline
 errc GetLastErrorCode()
 {
     return GetErrorCodeFromWindowsResult(::GetLastError());
 }
 
 
-
-struct DefaultPlatformEvent
+struct HandleGuard
 {
-    DefaultPlatformEvent()
-        : m_event(nullptr)
+    HandleGuard()
+        : m_handle(nullptr)
     {
     }
 
-    DefaultPlatformEvent(const DefaultPlatformEvent& ) = delete;
-    DefaultPlatformEvent& operator=(const DefaultPlatformEvent& ) = delete;
-
-    DefaultPlatformEvent(DefaultPlatformEvent&& other)
-        : m_event(other.m_event)
+    explicit HandleGuard(HANDLE handle)
+        : m_handle(handle)
     {
-        other.m_event = nullptr;
     }
 
-    DefaultPlatformEvent& operator=(DefaultPlatformEvent&& other)
+    HandleGuard(const HandleGuard&) = delete;
+    HandleGuard& operator=(const HandleGuard&) = delete;
+
+    HandleGuard(HandleGuard&& other)
+        : m_handle(other.m_handle)
+    {
+        other.m_handle = nullptr;
+    }
+
+    HandleGuard& operator=(HandleGuard&& other)
     {
         if (&other != this)
         {
-            m_event = other.m_event;
-            other.m_event = nullptr;
+            m_handle = other.m_handle;
+            other.m_handle = nullptr;
+        }
+        
+        return *this;
+    }
+
+    HandleGuard& operator=(HANDLE handle)
+    {
+        if (handle != m_handle)
+        {
+            Destroy();
+            m_handle = handle;
         }
 
         return *this;
     }
 
-    ~DefaultPlatformEvent()
+
+    ~HandleGuard()
     {
-        if (m_event)
-        {
-            ::CloseHandle(m_event);
-        }
+        Destroy();
     }
 
 
+    HANDLE get() const
+    {
+        return m_handle;
+    }
+
+    bool valid() const
+    {
+        return m_handle && (m_handle != INVALID_HANDLE_VALUE);
+    }
+
+private:
+    HANDLE m_handle;
+
+    void Destroy()
+    {
+        if (valid())
+        {
+            ::CloseHandle(m_handle);
+        }
+    }
+};
+
+
+
+struct DefaultPlatformEvent
+{
+    DefaultPlatformEvent()
+        : m_event()
+    {
+    }
+
     bool IsValid() const
     {
-        return m_event != nullptr;
+        return m_event.valid();
     }
 
     errc Initialize()
     {
         m_event = ::CreateEvent(nullptr, true, true, nullptr);
         
-        return std_emu::GetLastErrorCode();
+        return GetLastErrorCode();
     }
 
     errc Wait()
     {
-        auto status = WaitForSingleObjectEx(m_event, INFINITE, true);
-        if (status != WAIT_IO_COMPLETION)
+        for ( ; ; )
         {
-            return std_emu::GetLastErrorCode();
+            auto status = WaitForSingleObjectEx(m_event.get(), INFINITE, true);
+            switch (status)
+            {
+            case WAIT_IO_COMPLETION:
+                // go to next iteration
+                continue;
+                break;
+
+            case WAIT_ABANDONED:
+                return GetErrorCodeFromWindowsResult(ERROR_ABANDONED_WAIT_0);
+
+            case WAIT_OBJECT_0:
+                return errc::success;
+
+            case WAIT_TIMEOUT:
+                return GetErrorCodeFromWindowsResult(ERROR_WAIT_1);
+
+            default:
+                return GetLastErrorCode();
+            }
+        }
+    }
+
+    errc Notify()
+    {
+        auto success = ::SetEvent(m_event.get());
+        if (!success)
+        {
+            return GetLastErrorCode();
         }
 
         return errc::success;
     }
 
 private:
-    HANDLE m_event;
+    HandleGuard m_event;
 };
 
 } // namespace std_emu
@@ -199,4 +288,8 @@ private:
 #error Unsupported platform
 
 #endif
+
+#if !defined(CORO_NO_EXCEPTIONS)
+#define CORO_HAS_EXCEPTIONS
+#endif /* CORO_NO_EXCEPTIONS */
 
