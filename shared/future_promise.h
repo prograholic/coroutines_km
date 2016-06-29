@@ -23,6 +23,14 @@ public:
     shared_state_base(shared_state_base&&) = default;
     shared_state_base& operator=(shared_state_base&& other) = default;
 
+    ~shared_state_base()
+    {
+        if (m_coroutine)
+        {
+            m_coroutine.destroy();
+        }
+    }
+
     std_emu::error_code Initialize()
     {
         return m_event.Initialize();
@@ -53,12 +61,14 @@ public:
         return m_error;
     }
 
-    std_emu::error_code Notify()
+    std_emu::error_code Notify(std::experimental::coroutine_handle<> coroutine)
     {
         if (!IsValid())
         {
             return std_emu::errc::coro_invalid_shared_state;
         }
+
+        m_coroutine = coroutine;
 
         return m_event.Notify();
     }
@@ -66,6 +76,8 @@ public:
 private:
     PlatformEventType m_event;
     std_emu::error_code m_error;
+
+    std::experimental::coroutine_handle<> m_coroutine;
 };
 
 
@@ -306,16 +318,18 @@ struct promise
 
 		bool await_ready() noexcept
 		{
-            if (detail::IsValid(m_state))
-            {
-                m_state->Notify();
-            }
-
-			return true;
+			return false;
 		}
 
-		void await_suspend(std::experimental::coroutine_handle<> /* coroutine */) noexcept
+		void await_suspend(std::experimental::coroutine_handle<> coroutine) noexcept
 		{
+            if (detail::IsValid(m_state))
+            {
+                // here i can store coroutine_handle into shared state and destroy it later
+                //
+                // Or i can destroy coroutine_handle here: coroutine.destroy()
+                m_state->Notify(coroutine);
+            }
 		}
 
 		void await_resume() noexcept

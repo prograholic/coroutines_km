@@ -50,10 +50,10 @@ protected:
 
 struct WriteAwaiter : AwaiterBase
 {
-    explicit WriteAwaiter(HANDLE handle)
+    explicit WriteAwaiter(HANDLE handle, size_t size, char c)
         : AwaiterBase()
         , m_handle(handle)
-        , m_data(DataSize, 'b')
+        , m_data(size, c)
     {
     }
 
@@ -93,32 +93,54 @@ private:
 
 
 coro::future<void>
-WriteAndTrace(HANDLE file)
+WriteAndTrace(WriteAwaiter& awaiter2, WriteAwaiter& awaiter3)
 {
-    auto bytesWritten = await WriteAwaiter{file};
+    auto bytesWritten2 = await awaiter2;
+    TRACE() << "WOW!!! we have result2 (bytes written): " << bytesWritten2 << std::endl;
 
-    TRACE() << "WOW!!! we have result (bytes written): " << bytesWritten << std::endl;
+    auto bytesWritten3 = await awaiter3;
+    TRACE() << "WOW!!! we have result3 (bytes written): " << bytesWritten3 << std::endl;
 }
 
 } // namespace no_exceptions
 
 void TryCoroWaiter()
 {
-    HANDLE file = ::CreateFile(TEXT("2.txt"),
+    HANDLE file2 = ::CreateFile(TEXT("2.txt"),
                                GENERIC_WRITE,
                                FILE_SHARE_READ,
                                nullptr,
                                CREATE_ALWAYS,
                                FILE_FLAG_OVERLAPPED,
                                nullptr);
-    if (file == INVALID_HANDLE_VALUE)
+    if (file2 == INVALID_HANDLE_VALUE)
     {
         std_emu::error_code err = std_emu::GetLastErrorCode();
         TRACE() << "CreateFile failed:: " << err.value() << std::endl;
         return;
     }
 
-    auto&& res = no_exceptions::WriteAndTrace(file);
+    no_exceptions::WriteAwaiter awaiter2{file2, 1000, 'b'};
+
+    HANDLE file3 = ::CreateFile(TEXT("3.txt"),
+                               GENERIC_WRITE,
+                               FILE_SHARE_READ,
+                               nullptr,
+                               CREATE_ALWAYS,
+                               FILE_FLAG_OVERLAPPED,
+                               nullptr);
+    if (file3 == INVALID_HANDLE_VALUE)
+    {
+        std_emu::error_code err = std_emu::GetLastErrorCode();
+        TRACE() << "CreateFile failed:: " << err.value() << std::endl;
+        return;
+    }
+
+    no_exceptions::WriteAwaiter awaiter3{file3, 2000, 'c'};
+
+
+
+    auto&& res = no_exceptions::WriteAndTrace(awaiter2, awaiter3);
     auto err = res.get_value();
 
     if (err)

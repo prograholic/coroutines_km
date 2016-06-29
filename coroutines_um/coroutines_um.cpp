@@ -24,14 +24,14 @@ int main(int argc, char* argv [])
     }
     else
     {
-        TryWinApiWaiter();
-        TRACE() << std::endl << std::endl;
+        //TryWinApiWaiter();
+        //TRACE() << std::endl << std::endl;
 
         TryCoroWaiter();
         TRACE() << std::endl << std::endl;
 
-        TestChronoAwait();
-        TRACE() << std::endl << std::endl;
+        //TestChronoAwait();
+        //TRACE() << std::endl << std::endl;
     }
 
     return 0;
