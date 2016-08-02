@@ -7,7 +7,7 @@ namespace
 constexpr ULONG CrtPoolTag = 'CRTP';
 } // namespace
 
-void __cdecl operator delete(void* location,unsigned int)
+void __cdecl operator delete(void* location, size_t)
 {
     if (location)
     {

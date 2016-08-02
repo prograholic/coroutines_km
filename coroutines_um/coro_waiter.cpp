@@ -95,10 +95,10 @@ private:
 coro::future<void>
 WriteAndTrace(WriteAwaiter& awaiter2, WriteAwaiter& awaiter3)
 {
-    auto bytesWritten2 = await awaiter2;
+    auto bytesWritten2 = co_await awaiter2;
     TRACE() << "WOW!!! we have result2 (bytes written): " << bytesWritten2 << std::endl;
 
-    auto bytesWritten3 = await awaiter3;
+    auto bytesWritten3 = co_await awaiter3;
     TRACE() << "WOW!!! we have result3 (bytes written): " << bytesWritten3 << std::endl;
 }
 

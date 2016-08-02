@@ -28,7 +28,7 @@ auto operator await(std::chrono::system_clock::duration duration)
         bool await_suspend(std::experimental::coroutine_handle<> resume_cb)
         {
             int64_t relative_count = -duration.count();
-            timer = CreateThreadpoolTimer(TimerCallback, resume_cb.to_address(), nullptr);
+            timer = CreateThreadpoolTimer(TimerCallback, resume_cb.address(), nullptr);
             SetThreadpoolTimer(timer, (PFILETIME)&relative_count, 0, 0);
             return timer != 0;
         }

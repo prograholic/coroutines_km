@@ -54,7 +54,7 @@ struct coroutine_traits
 			return _Result;
 		}
 
-		void *to_address() const noexcept
+		void *address() const noexcept
 		{
 			return _Ptr;
 		}
