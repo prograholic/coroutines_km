@@ -106,9 +106,9 @@ struct coroutine_traits
 
 		using coroutine_handle<>::coroutine_handle;
 
-		static coroutine_handle from_promise(_PromiseT *_Prom) noexcept
+		static coroutine_handle from_promise(_PromiseT& _Prom) noexcept
 		{
-			auto _FramePtr = reinterpret_cast<char *>(_Prom) + _ALIGNED_SIZE;
+			auto _FramePtr = reinterpret_cast<char *>(&_Prom) + _ALIGNED_SIZE;
 			coroutine_handle<_PromiseT> _Result;
 			_Result._Ptr =
 				reinterpret_cast<_Resumable_frame_prefix *>(_FramePtr);
@@ -145,7 +145,7 @@ struct coroutine_traits
 	bool operator==(coroutine_handle<_PromiseT> const &_Left,
 					coroutine_handle<_PromiseT> const &_Right) noexcept
 	{
-		return _Left.to_address() == _Right.to_address();
+		return _Left.address() == _Right.address();
 	}
 
 	template <typename _PromiseT>
@@ -229,7 +229,7 @@ struct coroutine_traits
 
 		static _Handle_type _Handle_from_frame(void *_Addr) noexcept
 		{
-			return _Handle_type::from_promise(_Promise_from_frame(_Addr));
+			return _Handle_type::from_promise(*_Promise_from_frame(_Addr));
 		}
 
 		static void _Set_exception(void *_Addr)

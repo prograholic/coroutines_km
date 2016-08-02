@@ -304,9 +304,9 @@ struct promise
     /// This type is used for clients notification
     /// We cannot invoke `notify()` after `coro.resume()` because promise will be destroyed after resuming
     ///
-    /// Also we cannot notify clients BEFORE corutine resumes
+    /// Also we cannot notify clients BEFORE coroutine resumes
     /// Because we may get race condition:
-    /// client may receive notification, but corutine is not resumed yet
+    /// client may receive notification, but coroutine is not resumed yet
     ///
     /// So this type performs notification if promise is valid.
 	struct notify_future

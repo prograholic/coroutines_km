@@ -15,7 +15,6 @@ void __cdecl operator delete(void* location, size_t)
     }
 }
 
-_Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(_Size)
 void * __cdecl operator new(size_t _Size, struct std::nothrow_t const &)
 {
     return ::ExAllocatePoolWithTag(PagedPool, _Size, CrtPoolTag);

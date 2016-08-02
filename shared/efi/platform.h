@@ -5,7 +5,15 @@
 
 #define CORO_NO_EXCEPTIONS
 
-#define assert(x) ASSERT(x)
+extern "C" void __cdecl __debugbreak(void);
+#pragma intrinsic(__debugbreak)
+
+
+void Print(const wchar_t* msg);
+
+#define CORO_TRACE_SIMPLE(x) Print(L ## x "\r\n")
+
+#define assert(x) do {if (!x){CORO_TRACE_SIMPLE(#x); __debugbreak();}} while(0)
 
 namespace std_emu
 {
@@ -46,17 +54,33 @@ struct DefaultPlatformEvent
     DefaultPlatformEvent()
         : m_event(nullptr)
     {
-        //::KeInitializeEvent(&m_event, NotificationEvent, FALSE);
     }
 
     DefaultPlatformEvent(const DefaultPlatformEvent& ) = delete;
     DefaultPlatformEvent& operator=(const DefaultPlatformEvent& ) = delete;
-    DefaultPlatformEvent(DefaultPlatformEvent&& other) = delete;
-    DefaultPlatformEvent& operator=(DefaultPlatformEvent&& other) = delete;
+    
+    DefaultPlatformEvent(DefaultPlatformEvent&& other)
+        : m_event(other.m_event)
+    {
+        other.m_event = nullptr;
+    }
+    DefaultPlatformEvent& operator=(DefaultPlatformEvent&& other)
+    {
+        if (&other != this)
+        {
+            m_event = other.m_event;
+            other.m_event = nullptr;
+        }
+
+        return *this;
+    }
 
     ~DefaultPlatformEvent()
     {
-        gBS->CloseEvent(m_event);
+        if (m_event)
+        {
+            gBS->CloseEvent(m_event);
+        }
     }
 
 
@@ -67,27 +91,49 @@ struct DefaultPlatformEvent
 
     errc Initialize()
     {
-        return GetErrorCodeFromEfiStatus(gBS->CreateEvent(EVT_NOTIFY_WAIT, TPL_CALLBACK, EventHandler, nullptr, &m_event));
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Initialize(0)");
+        auto status = gBS->CreateEvent(0, 0, nullptr, nullptr, &m_event);
+        if (EFI_ERROR(status))
+        {
+            CORO_TRACE_SIMPLE("DefaultPlatformEvent::Initialize failed");
+            return GetErrorCodeFromEfiStatus(status);
+        }
+
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Initialize(1)");
+        return std_emu::errc::success;
     }
 
     errc Wait()
     {
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Wait(0)");
         UINTN eventId = 0;
-        return GetErrorCodeFromEfiStatus(gBS->WaitForEvent(1, &m_event, &eventId));
+        auto status = gBS->WaitForEvent(1, &m_event, &eventId);
+        if (EFI_ERROR(status))
+        {
+            CORO_TRACE_SIMPLE("DefaultPlatformEvent::Wait failed");
+            return GetErrorCodeFromEfiStatus(status);
+        }
+
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Wait(1)");
+        return std_emu::errc::success;
     }
 
     errc Notify()
     {
-        return GetErrorCodeFromEfiStatus(gBS->SignalEvent(m_event));
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Notify(0)");
+        auto status = gBS->SignalEvent(m_event);
+        if (EFI_ERROR(status))
+        {
+            CORO_TRACE_SIMPLE("DefaultPlatformEvent::Notify failed");
+            return GetErrorCodeFromEfiStatus(status);
+        }
+
+        CORO_TRACE_SIMPLE("DefaultPlatformEvent::Notify(1)");
+        return std_emu::errc::success;
     }
 
 private:
     EFI_EVENT m_event;
-
-
-    static void EFIAPI EventHandler(EFI_EVENT event, void* context)
-    {
-    }
 };
 
 } // namespace std_emu
