@@ -14,7 +14,6 @@
 #endif
 
 
-    _Ret_maybenull_ _Success_(return != NULL) _Post_writable_byte_size_(_Size)
 void* __cdecl operator new(
     size_t                _Size,
     std::nothrow_t const&
@@ -23,8 +22,7 @@ void* __cdecl operator new(
 
 #ifndef __PLACEMENT_NEW_INLINE
     #define __PLACEMENT_NEW_INLINE
-    _Ret_notnull_ _Post_writable_byte_size_(_Size)
-    inline void* operator new(size_t _Size, _Writable_bytes_(_Size) void* _Where) throw()
+    inline void* operator new(size_t _Size, void* _Where) throw()
     {
         (void)_Size;
         return _Where;
@@ -38,8 +36,7 @@ void* __cdecl operator new(
 
 #ifndef __PLACEMENT_VEC_NEW_INLINE
     #define __PLACEMENT_VEC_NEW_INLINE
-    _Ret_notnull_ _Post_writable_byte_size_(_Size)
-    inline void* operator new[](size_t _Size, _Writable_bytes_(_Size) void* _Where) throw()
+    inline void* operator new[](size_t _Size, void* _Where) throw()
     {
         (void)_Size;
         return _Where;

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  This .props file shoule be used by every EFI project
+  It defines necessary toolchain properties and settings:
+    * include directories
+    * macros
+    * warning level
+    * some other compilation and linking options
+-->
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <!-- Should be one of KernelMode, UserMode, Uefi, Bios, Custom -->
+    <PdkProjectMode>Uefi</PdkProjectMode>
+    <!-- NOTE: 3rdparty lib -->
+    <UEFI_TOOLKIT_DIR>d:\pixel\src\efi_toolkit\</UEFI_TOOLKIT_DIR>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateManifest>false</GenerateManifest>
+    <LinkIncremental>false</LinkIncremental>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(UEFI_TOOLKIT_DIR)\libefi\include;$(UEFI_TOOLKIT_DIR)\libefi\include\Uefi;$(UEFI_TOOLKIT_DIR)\libstd\include;$(UEFI_TOOLKIT_DIR)\libstd\include\cxx;$(UEFI_TOOLKIT_DIR)\libssl\openssl-1.0.2a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
+      
+      <PreprocessorDefinitions>CORO_EFI_MODE;LIBSTD_UEFI;OPENSSL_SYS_UEFI;__STDC_LIMIT_MACROS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Release'">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+
+      <!-- Default optimization options (as minimal optimization as possible to simplify debug) -->
+      <EnableIntrinsicFunctions>false</EnableIntrinsicFunctions>
+      <Optimization>Disabled</Optimization>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeLibrary></RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalOptions>/Gs32768 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      
+      <!-- Without this option MSVC will use SSE2 instructions -->
+      <EnableEnhancedInstructionSet Condition="'$(Platform)' == 'Win32'">NoExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <Link>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+
+      <SubSystem>EFI Application</SubSystem>
+
+      <!-- Default optimization options (as minimal optimization as possible to simplify debug) -->
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <LinkTimeCodeGeneration></LinkTimeCodeGeneration>
+
+      <BaseAddress>0</BaseAddress>
+      <DataExecutionPrevention></DataExecutionPrevention>
+      <EntryPointSymbol>LibEfiEntry</EntryPointSymbol>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <RandomizedBaseAddress></RandomizedBaseAddress>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <!-- EFI binary postprocessing -->
+    <CustomBuildStep>
+      <Command>$(UEFI_TOOLKIT_DIR)\GenFw.exe -e $(EfiFiletype) -o $(OutDir)\$(TargetName).efi $(OutDir)\$(TargetName).dll</Command>
+      <Message>GenFw -e $(EfiFiletype)</Message>
+      <Inputs>$(OutDir)\$(ProjectName).dll</Inputs>
+      <Outputs>$(OutDir)\$(ProjectName).efi</Outputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+</Project>

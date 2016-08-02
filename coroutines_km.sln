@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coroutines_um", "coroutines_um\coroutines_um.vcxproj", "{C7FAD845-3228-4752-B978-FC694BB16F8B}"
 EndProject
@@ -18,6 +18,23 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "experimental", "experimental", "{A92D97D4-1196-49C7-8105-FEA31FAAF8B7}"
 	ProjectSection(SolutionItems) = preProject
 		shared\experimental\coro.h = shared\experimental\coro.h
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "coroutines_efi", "coroutines_efi\coroutines_efi.vcxproj", "{DCC4481F-F290-4DC5-9235-419F6DBFB637}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "km", "km", "{A83BCB83-B9B9-41B0-83B2-3A1D42618D66}"
+	ProjectSection(SolutionItems) = preProject
+		shared\km\platform.h = shared\km\platform.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "um", "um", "{07BB098B-8BBD-4A88-9E87-D518CEA50B9E}"
+	ProjectSection(SolutionItems) = preProject
+		shared\um\platform.h = shared\um\platform.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "efi", "efi", "{BBDDCD98-B709-487A-915E-30D4B195ADCF}"
+	ProjectSection(SolutionItems) = preProject
+		shared\efi\platform.h = shared\efi\platform.h
 	EndProjectSection
 EndProject
 Global
@@ -68,11 +85,30 @@ Global
 		{39F7CC5F-4C05-42B3-921E-64828C9FA538}.Release|x86.ActiveCfg = Release|Win32
 		{39F7CC5F-4C05-42B3-921E-64828C9FA538}.Release|x86.Build.0 = Release|Win32
 		{39F7CC5F-4C05-42B3-921E-64828C9FA538}.Release|x86.Deploy.0 = Release|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|ARM.ActiveCfg = Debug|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|ARM64.ActiveCfg = Debug|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x64.ActiveCfg = Debug|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x64.Build.0 = Debug|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x64.Deploy.0 = Debug|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x86.ActiveCfg = Debug|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x86.Build.0 = Debug|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Debug|x86.Deploy.0 = Debug|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|ARM.ActiveCfg = Release|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|ARM64.ActiveCfg = Release|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x64.ActiveCfg = Release|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x64.Build.0 = Release|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x64.Deploy.0 = Release|x64
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x86.ActiveCfg = Release|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x86.Build.0 = Release|Win32
+		{DCC4481F-F290-4DC5-9235-419F6DBFB637}.Release|x86.Deploy.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A92D97D4-1196-49C7-8105-FEA31FAAF8B7} = {CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}
+		{A83BCB83-B9B9-41B0-83B2-3A1D42618D66} = {CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}
+		{07BB098B-8BBD-4A88-9E87-D518CEA50B9E} = {CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}
+		{BBDDCD98-B709-487A-915E-30D4B195ADCF} = {CFFF3BB4-FA6C-4C03-8E27-7DD0FE0831D3}
 	EndGlobalSection
 EndGlobal
