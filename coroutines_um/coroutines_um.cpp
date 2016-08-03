@@ -24,7 +24,9 @@ int main(int argc, char* argv [])
     }
     else
     {
-        //TryWinApiWaiter();
+        CStyleWinapiWaiter();
+        TryWinApiWaiter();
+        TrySimpleCoroWaiter();
         //TRACE() << std::endl << std::endl;
 
         TryCoroWaiter();

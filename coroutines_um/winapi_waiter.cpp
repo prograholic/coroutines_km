@@ -1,120 +1,40 @@
 #include "common.h"
 
-#include <coro_platform.h>
+
+#include <string>
+
+#include <iostream>
 
 
-
-typedef std::pair<std::string, DWORD> error_info_t;
-
-#define EXPECT_EX(status, error) \
-do { if (!(status)) {auto le = (error); throw error_info_t(std::make_pair(STR(status), le));}} while(0)
-
-#define TRACE() std::cerr << __FUNCTION__ << ": "
-
-#define CALL_SPY() TRACE() << __LINE__ << std::endl
-
-
-#define EXPECT(status) EXPECT_EX(status, ::GetLastError())
-
-
-
-struct Waiter
-{
-    HANDLE m_event;
-
-    void Wait()
-    {
-        TRACE() << "Wait start" << std::endl;
-        EXPECT(::WaitForSingleObjectEx(m_event, INFINITE, true) == WAIT_OBJECT_0);
-
-        TRACE() << "Wait end" << std::endl;
-    }
-};
-
-class AsyncIo : private OVERLAPPED
-{
-public:
-
-    explicit AsyncIo(HANDLE handle)
-        : OVERLAPPED()
-        , m_handle(handle)
-        , m_data(DataSize, 'a')
-    {
-        EXPECT(handle != INVALID_HANDLE_VALUE);
-
-        hEvent = ::CreateEvent(nullptr, true, true, nullptr);
-        EXPECT(hEvent != nullptr);
+struct WinapiAsyncWriter : public AsyncWriterBase {
+    explicit WinapiAsyncWriter(HANDLE handle)
+        : AsyncWriterBase(handle)
+        , m_promise(::CreateEvent(nullptr, true, true, nullptr))
+        , m_message() {
     }
 
-
-    Waiter WriteAsync()
-    {
-        TRACE() << "write async end" << std::endl;
-        EXPECT(::WriteFileEx(m_handle.get(), m_data.data(), m_data.size(), GetOverlapped(), AsyncIo::OnWrite));
-
-        TRACE() << "write async end" << std::endl;
-
-        return {hEvent};
-    }
-
-    ~AsyncIo()
-    {
-        ::CloseHandle(hEvent);
+    HANDLE WriteAsync(const std::string& message) {
+        m_message = message;
+        std::cout << "starting ..." << std::endl;
+        StartAsyncWrite(m_message.data(), m_message.size());
+        return m_promise;
     }
 
 private:
-    std_emu::HandleGuard m_handle;
+    HANDLE m_promise;
+    std::string m_message;
 
-    blob_t m_data;
+    virtual void WriteFinished(DWORD bytesWritten) {
+        std::cout << "done, bytes written: " << bytesWritten << std::endl;
 
-    AsyncIo(const AsyncIo&) = delete;
-    AsyncIo& operator=(const AsyncIo&) = delete;
-
-    OVERLAPPED* GetOverlapped()
-    {
-        return static_cast<OVERLAPPED*>(this);
-    }
-
-    static AsyncIo* GetAsyncIo(OVERLAPPED* overlapped)
-    {
-        return reinterpret_cast<AsyncIo*>(overlapped);
-    }
-
-    static void WINAPI OnWrite(DWORD error, DWORD bytesReaded, LPOVERLAPPED overlapped)
-    {
-        if (error == ERROR_HANDLE_EOF)
-        {
-            // does nothing, everything is readed
-            return;
-        }
-
-        EXPECT_EX(error == ERROR_SUCCESS, error);
-
-        // do not know what to do
-        EXPECT(false);
+        ::SetEvent(m_promise);
     }
 };
 
-
-
-void TryWinApiWaiter()
-{
-    try
-    {
-        AsyncIo asyncIo(::CreateFile(TEXT("1.txt"),
-                                     GENERIC_WRITE,
-                                     FILE_SHARE_READ,
-                                     nullptr,
-                                     CREATE_ALWAYS,
-                                     FILE_FLAG_OVERLAPPED,
-                                     nullptr));
-
-        auto waiter = asyncIo.WriteAsync();
-
-        waiter.Wait();
-    }
-    catch (const error_info_t& e)
-    {
-        TRACE() << e.first << ": " << e.second << std::endl;
-    }
+void TryWinApiWaiter() {
+    auto fileHandle = ::CreateFile(TEXT("1.txt"), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_FLAG_OVERLAPPED, nullptr);
+    WinapiAsyncWriter asyncWriter{fileHandle};
+    
+    auto future = asyncWriter.WriteAsync("hello world");
+    ::WaitForSingleObjectEx(future, INFINITE, true);
 }

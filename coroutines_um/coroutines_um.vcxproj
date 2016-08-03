@@ -157,7 +157,9 @@
     <ClCompile Include="chrono_await_sample.cpp" />
     <ClCompile Include="coroutines_um.cpp" />
     <ClCompile Include="coro_waiter.cpp" />
+    <ClCompile Include="c_style_winapi_waiter.cpp" />
     <ClCompile Include="driver_connection.cpp" />
+    <ClCompile Include="simple_coro_waiter.cpp" />
     <ClCompile Include="winapi_waiter.cpp" />
   </ItemGroup>
   <ItemGroup>
