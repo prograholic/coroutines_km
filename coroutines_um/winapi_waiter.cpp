@@ -20,15 +20,14 @@ struct WinapiAsyncWriter : public AsyncWriterBase {
         return m_promise;
     }
 
-private:
-    HANDLE m_promise;
-    std::string m_message;
-
     virtual void WriteFinished(DWORD bytesWritten) {
         std::cout << "done, bytes written: " << bytesWritten << std::endl;
 
         ::SetEvent(m_promise);
     }
+
+    HANDLE m_promise;
+    std::string m_message;
 };
 
 void TryWinApiWaiter() {

@@ -34,9 +34,9 @@ struct AsyncIoBase : private OVERLAPPED {
         return static_cast<OVERLAPPED*>(this);
     }
 
-    template <typename AwaiterType>
-    static AwaiterType* GetAwaiter(OVERLAPPED* overlapped) {
-        return static_cast<AwaiterType*>(overlapped);
+    template <typename AsyncIoType>
+    static AsyncIoType* GetAsyncIo(OVERLAPPED* overlapped) {
+        return static_cast<AsyncIoType*>(overlapped);
     }
 };
 
@@ -54,7 +54,7 @@ struct AsyncWriterBase : public AsyncIoBase {
     virtual void WriteFinished(DWORD bytesWritten) = 0;
 
     static void WINAPI OnWrite(DWORD error, DWORD bytesWritten, LPOVERLAPPED overlapped) {
-        AsyncWriterBase* me = GetAwaiter<AsyncWriterBase>(overlapped);
+        AsyncWriterBase* me = GetAsyncIo<AsyncWriterBase>(overlapped);
 
         me->WriteFinished(bytesWritten);
     }
