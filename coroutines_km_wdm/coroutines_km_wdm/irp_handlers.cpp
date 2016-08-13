@@ -178,6 +178,8 @@ struct WriteAwaiter : AwaiterBase
 coro::future<void>
 AsyncOperation()
 {
+    CORO_TRACE("Starting...\n");
+
     co_await WriteAwaiter{};
     
     CORO_TRACE("Wow, we`ve finished\n");

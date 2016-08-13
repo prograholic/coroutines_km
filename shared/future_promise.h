@@ -25,10 +25,7 @@ public:
 
     ~shared_state_base()
     {
-        if (m_coroutine)
-        {
-            m_coroutine.destroy();
-        }
+        DestroyCoroutine();
     }
 
     std_emu::error_code Initialize()
@@ -73,6 +70,25 @@ public:
         return m_event.Notify();
     }
 
+    std_emu::error_code Notify()
+    {
+        if (!IsValid())
+        {
+            return std_emu::errc::coro_invalid_shared_state;
+        }
+
+        return m_event.Notify();
+    }
+
+    void DestroyCoroutine()
+    {
+        if (m_coroutine)
+        {
+            m_coroutine.destroy();
+            m_coroutine = nullptr;
+        }
+    }
+
 private:
     PlatformEventType m_event;
     std_emu::error_code m_error;
@@ -92,6 +108,7 @@ public:
     using shared_state_base<>::SetError;
     using shared_state_base<>::Wait;
     using shared_state_base<>::Notify;
+    using shared_state_base<>::DestroyCoroutine;
 
     void SetValue(const Type& value)
     {
@@ -124,6 +141,7 @@ public:
     using shared_state_base<>::SetError;
     using shared_state_base<>::Wait;
     using shared_state_base<>::Notify;
+    using shared_state_base<>::DestroyCoroutine;
 
     void SetValue()
     {
@@ -159,6 +177,14 @@ struct future
     future()
         : m_state()
     {
+    }
+
+    ~future()
+    {
+        if (m_state)
+        {
+            m_state->DestroyCoroutine();
+        }
     }
 
     explicit future(const detail::shared_state_ptr<Type>& state)
@@ -240,14 +266,19 @@ struct promise
         m_state->SetError(ec);
     }
 
-#if 0
     void notify()
     {
         assert(detail::IsValid(m_state));
 
         m_state->Notify();
     }
-#endif //0
+
+    void notify(std::experimental::coroutine_handle<promise> coroutine)
+    {
+        assert(detail::IsValid(m_state));
+
+        m_state->Notify(coroutine);
+    }
 
     // promise_type implementation
 
@@ -266,7 +297,7 @@ struct promise
 			return !m_shouldDestroy;
 		}
 
-		void await_suspend(std::experimental::coroutine_handle<> coroutine) noexcept
+		void await_suspend(std::experimental::coroutine_handle<promise> coroutine) noexcept
 		{
             assert(m_shouldDestroy);
 
@@ -284,7 +315,7 @@ struct promise
 
     destroy_coro_if initial_suspend()
     {
-        return destroy_coro_if(!detail::IsValid(m_state));
+        return destroy_coro_if{!detail::IsValid(m_state)};
     }
 
     future<Type> get_return_object()
@@ -301,18 +332,36 @@ struct promise
 
 #endif /* CORO_NO_EXCEPTIONS */
 
-    /// This type is used for clients notification
-    /// We cannot invoke `notify()` after `coro.resume()` because promise will be destroyed after resuming
-    ///
-    /// Also we cannot notify clients BEFORE coroutine resumes
-    /// Because we may get race condition:
-    /// client may receive notification, but coroutine is not resumed yet
-    ///
-    /// So this type performs notification if promise is valid.
-	struct notify_future
+    /// This type is used for clients notification and destruction coroutine in caller thread
+	struct notify_and_destroy_coroutine_in_async_context
 	{
-        notify_future(detail::shared_state_ptr<Type> state)
+        notify_and_destroy_coroutine_in_async_context(detail::shared_state_ptr<Type> state)
             : m_state(state)
+        {
+        }
+
+		bool await_ready() noexcept
+		{
+            return true;
+		}
+
+		void await_suspend(std::experimental::coroutine_handle<> /* coroutine */) noexcept
+		{
+            assert(false && "should be called");
+		}
+
+		void await_resume() noexcept
+		{
+            m_state->Notify();
+		}
+
+        detail::shared_state_ptr<Type> m_state;
+	};
+
+    /// Notify future and destroy coroutine in async context
+	struct notify_and_destroy_coroutine_in_caller_context
+	{
+        notify_and_destroy_coroutine_in_caller_context()
         {
         }
 
@@ -321,27 +370,27 @@ struct promise
 			return false;
 		}
 
-		void await_suspend(std::experimental::coroutine_handle<> coroutine) noexcept
+		void await_suspend(std::experimental::coroutine_handle<promise> coroutine) noexcept
 		{
-            if (detail::IsValid(m_state))
-            {
-                // here i can store coroutine_handle into shared state and destroy it later
-                //
-                // Or i can destroy coroutine_handle here: coroutine.destroy()
-                m_state->Notify(coroutine);
-            }
+            coroutine.promise().notify(coroutine);
 		}
 
 		void await_resume() noexcept
 		{
+            assert(false && "should be called");
 		}
-
-        detail::shared_state_ptr<Type> m_state;
 	};
 
-    notify_future final_suspend()
+#if 0
+    notify_and_destroy_coroutine_in_async_context final_suspend()
     {
-        return {m_state};
+        return notify_and_destroy_coroutine_in_async_context{m_state};
+    }
+#endif //0
+
+    notify_and_destroy_coroutine_in_caller_context final_suspend()
+    {
+        return {};
     }
 
 private:
