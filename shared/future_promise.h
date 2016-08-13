@@ -347,7 +347,7 @@ struct promise
 
 		void await_suspend(std::experimental::coroutine_handle<> /* coroutine */) noexcept
 		{
-            assert(false && "should be called");
+            assert(false && "should not be called");
 		}
 
 		void await_resume() noexcept
@@ -377,7 +377,7 @@ struct promise
 
 		void await_resume() noexcept
 		{
-            assert(false && "should be called");
+            assert(false && "should not be called");
 		}
 	};
 
