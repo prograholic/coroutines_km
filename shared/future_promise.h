@@ -332,7 +332,7 @@ struct promise
 
 #endif /* CORO_NO_EXCEPTIONS */
 
-    /// This type is used for clients notification and destruction coroutine in caller thread
+    /// This type is used for clients notification and destruction coroutine in async thread
 	struct notify_and_destroy_coroutine_in_async_context
 	{
         notify_and_destroy_coroutine_in_async_context(detail::shared_state_ptr<Type> state)
@@ -358,7 +358,7 @@ struct promise
         detail::shared_state_ptr<Type> m_state;
 	};
 
-    /// Notify future and destroy coroutine in async context
+    /// Notify future and destroy coroutine in caller context
 	struct notify_and_destroy_coroutine_in_caller_context
 	{
         notify_and_destroy_coroutine_in_caller_context()
